@@ -1,0 +1,57 @@
+# Cline Rules for Section Extraction Research Tool
+
+## Project Patterns
+
+### File Naming Conventions
+- Use lowercase with underscores for file and directory names
+- Use descriptive names that reflect the content or purpose
+- Prefix API endpoints with appropriate HTTP method indicators
+
+### Code Style Preferences
+- Use TypeScript for type safety
+- Prefer async/await over promise chains
+- Use descriptive variable and function names
+- Include comments for complex logic
+- Follow SvelteKit conventions for file structure and naming
+
+### Implementation Paths
+- Server-side file operations are handled in API endpoints
+- Client-side form validation before server submission
+- Error handling at both client and server levels
+- Configuration values centralized in lib/config.ts
+
+## User Preferences
+- Minimal UI with focus on functionality
+- Simple, direct feedback for user actions
+- Efficient workflow for content input and saving
+
+## Known Challenges
+- File system operations in production environments may require special handling
+- Path resolution needs to be robust across different environments
+- Content organization will become more complex as the dataset grows
+- Balancing simplicity with the need for more advanced features
+
+## Project Evolution
+- Starting with basic content saving functionality
+- Planning to add tagging and organization features
+- Will eventually integrate with LLM processing for section extraction
+- May need more sophisticated storage solutions as content volume increases
+
+## Tool Usage Patterns
+- SvelteKit for full-stack development
+- Node.js fs module for file system operations
+- Browser alerts for simple user feedback
+- TailwindCSS for minimal styling
+
+## Important Implementation Details
+- The persistence directory is created at the project root using `process.cwd()`
+- Titles are sanitized by replacing non-alphanumeric characters with underscores
+- Files are saved with .md extension for markdown content
+- Error handling uses try/catch blocks with appropriate error messages
+- Form validation occurs on both client and server sides
+
+## Future Considerations
+- May need to implement a more robust storage solution
+- Consider adding a database for better content management
+- Plan for handling larger volumes of content
+- Design for extensibility to accommodate different LLM processing methods

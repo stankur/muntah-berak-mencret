@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { marked } from 'marked';
 	import { processRegistry, type Process } from '$lib/processes';
+	import DiagramSection from '$lib/components/DiagramSection.svelte';
 
 	let title = $state<string>('');
 	let content = $state<string>('');
@@ -133,6 +134,9 @@
 </script>
 
 <div class="p-4">
+<!-- Diagram Section -->
+<DiagramSection />
+
 <!-- Titles List -->
 <div class="mb-6">
 	<h2 class="text-xl font-semibold mb-2">Saved Content</h2>

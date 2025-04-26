@@ -1,16 +1,20 @@
 # Active Context: Section Extraction Research Tool
 
 ## Current Work Focus
-The current focus is on implementing the basic functionality for the Section Extraction Research Tool. This initial phase is centered on creating a minimal viable product that allows users to input content, save it as markdown files, and provide basic feedback on the operation's success or failure.
+The current focus is on implementing a process registry system for the Section Extraction Research Tool. This allows defining processes that can transform markdown content and registering renderers to display the transformed content. The system enables running processes on multiple content items and viewing the results.
 
 ## Recent Changes
 - Created the basic project structure using SvelteKit
 - Implemented a simple form UI with title input and content textarea
 - Added a save button with basic styling
-- Created a server-side API endpoint for saving content to the filesystem
+- Created server-side API endpoints for saving, listing, and retrieving content
 - Implemented file system operations for creating the persistence directory and saving files
 - Added basic validation and error handling
 - Set up the memory bank documentation structure
+- Implemented a process registry system with TypeScript generics
+- Created an identity process that keeps content unchanged
+- Added UI for selecting processes and content to process
+- Implemented batch processing of multiple content items
 
 ## Next Steps
 1. **Implement Tagging System**:

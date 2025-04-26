@@ -26,13 +26,25 @@ section-extraction/
 ├── src/
 │   ├── lib/
 │   │   ├── config.ts         # Configuration settings
-│   │   └── index.ts          # Library exports
+│   │   ├── index.ts          # Library exports
+│   │   └── processes/        # Process registry system
+│   │       ├── index.ts      # Process exports
+│   │       ├── registry.ts   # Process registry
+│   │       ├── types.ts      # Process and renderer types
+│   │       ├── components/   # Renderer components
+│   │       │   └── MarkdownRenderer.svelte  # Markdown renderer
+│   │       └── implementations/  # Process implementations
+│   │           └── identity.ts   # Identity process
 │   ├── routes/
-│   │   ├── +page.svelte      # Main page with form UI
+│   │   ├── +page.svelte      # Main page with form UI and process execution
 │   │   ├── +layout.svelte    # Layout component
 │   │   └── api/
-│   │       └── save/
-│   │           └── +server.ts # API endpoint for saving files
+│   │       ├── save/
+│   │       │   └── +server.ts # API endpoint for saving files
+│   │       ├── list/
+│   │       │   └── +server.ts # API endpoint for listing files
+│   │       └── content/
+│   │           └── +server.ts # API endpoint for retrieving content
 │   ├── app.css               # Global styles
 │   ├── app.d.ts              # TypeScript declarations
 │   └── app.html              # HTML template
@@ -87,8 +99,46 @@ The project relies on the following key dependencies:
 - File system persistence requires a deployment environment that supports persistent storage
 - Environment variables may be needed for production configuration
 
+## Process Registry System
+
+The process registry system is a key component of the application that enables extensible content transformation:
+
+### Core Components
+
+1. **Process Registry** (`lib/processes/registry.ts`)
+   - A singleton class that maintains a collection of registered processes
+   - Provides methods to register processes and retrieve them by ID
+   - Uses TypeScript generics to ensure type safety
+
+2. **Process and Renderer Types** (`lib/processes/types.ts`)
+   - Defines the `Process<T>` interface with generic type parameter
+   - Defines the `Renderer<T>` type for Svelte components that render process outputs
+   - Uses TypeScript generics to ensure type safety between process output and renderer input
+
+3. **Process Implementations** (`lib/processes/implementations/`)
+   - Contains concrete implementations of processes
+   - Each process defines how to transform content and specifies a renderer
+   - Currently includes an identity process that keeps content unchanged
+
+4. **Renderer Components** (`lib/processes/components/`)
+   - Contains Svelte components for rendering process outputs
+   - Currently includes a markdown renderer component
+
+### Process Flow
+
+1. Processes are registered with the registry during application initialization
+2. The UI displays available processes from the registry
+3. The user selects a process and one or more content items
+4. When the user clicks "Run Process":
+   - The system fetches each selected content item
+   - The selected process transforms each content item
+   - The results are logged to the console (future: displayed using the process's renderer)
+
 ## Future Technical Considerations
 - Database integration for more robust content management
 - Authentication system for multi-user support
 - API endpoints for content retrieval and management
 - Integration with LLM services for section extraction processing
+- Persistence for process results
+- Additional process implementations for different content transformations
+- Visualization of process results using the defined renderers

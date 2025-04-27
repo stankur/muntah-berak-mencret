@@ -471,8 +471,7 @@
 				{#if isLoadingResult}
 					<p>Loading...</p>
 				{:else if resultProcess}
-                {/* @ts-ignore - The renderer component expects input prop directly */''}
-            <resultProcess.renderer input={resultContent.content}/>
+                <resultProcess.renderer input={resultContent.content}/>
 				{:else}
 					<div class="prose">
 						<p class="text-red-500">

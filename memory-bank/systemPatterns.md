@@ -143,6 +143,20 @@ flowchart TD
    - The selected process transforms each content item
    - The results are logged to the console (future: displayed using the process's renderer)
 
+### Implemented Processes
+
+1. **Identity Process**:
+   - Keeps content unchanged
+   - Serves as a baseline for testing the process registry system
+   - Uses the markdown renderer for display
+
+2. **Line Numbering Process**:
+   - Adds sequential numbers to content blocks
+   - Treats tables, lists, code blocks, and blockquotes as single blocks
+   - Ensures line numbers always start on a new line
+   - Intelligently skips numbering figure captions and other special elements
+   - Uses the markdown renderer for display
+
 ### Benefits
 
 - **Extensibility**: New processes can be added without modifying existing code

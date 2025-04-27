@@ -1,7 +1,7 @@
 # Active Context: Section Extraction Research Tool
 
 ## Current Work Focus
-The current focus is on implementing a process registry system for the Section Extraction Research Tool. This allows defining processes that can transform markdown content and registering renderers to display the transformed content. The system enables running processes on multiple content items and viewing the results.
+The current focus is on expanding the process registry system for the Section Extraction Research Tool by implementing new content transformation processes. The latest addition is a line numbering process that adds sequential numbers to content blocks while treating tables and lists as single units. This process helps with referencing specific sections of content and is particularly useful for the section extraction research.
 
 ## Recent Changes
 - Created the basic project structure using SvelteKit
@@ -15,6 +15,11 @@ The current focus is on implementing a process registry system for the Section E
 - Created an identity process that keeps content unchanged
 - Added UI for selecting processes and content to process
 - Implemented batch processing of multiple content items
+- Implemented a line numbering process that:
+  - Adds sequential numbers to content blocks
+  - Treats tables and lists as single blocks
+  - Ensures line numbers always start on a new line
+  - Intelligently skips numbering figure captions and other special elements
 
 ## Next Steps
 1. **Implement Tagging System**:

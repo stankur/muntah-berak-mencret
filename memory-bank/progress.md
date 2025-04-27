@@ -15,6 +15,7 @@
 - ✅ Content viewing with markdown rendering
 - ✅ Process registry system with TypeScript generics
 - ✅ Identity process implementation
+- ✅ Line numbering process implementation
 - ✅ Process selection UI
 - ✅ Multiple content selection for batch processing
 - ✅ Process execution with console logging
@@ -33,7 +34,7 @@
 - ⬜ Results comparison tools
 
 ## Current Status
-The project has progressed beyond the initial phase and now includes a process registry system. The application can now:
+The project has progressed beyond the initial phase and now includes a process registry system with multiple process implementations. The application can now:
 
 1. Accept a title and content from the user
 2. Validate the inputs
@@ -44,6 +45,13 @@ The project has progressed beyond the initial phase and now includes a process r
 7. Select a process and multiple content items
 8. Execute the selected process on the selected content
 9. Log process results to the console
+
+The latest addition is a line numbering process that adds sequential numbers to content blocks while treating tables, lists, and other special elements as single units. This process:
+1. Adds line numbers to each content block (e.g., "1:", "2:", etc.)
+2. Skips empty lines when counting
+3. Treats tables, lists, code blocks, and blockquotes as single blocks
+4. Ensures line numbers always start on a new line
+5. Intelligently skips numbering figure captions, table captions, and other special elements
 
 The implementation continues to focus on functionality rather than aesthetics, with minimal styling applied to the UI components.
 

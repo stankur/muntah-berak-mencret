@@ -3,6 +3,7 @@
 	import { marked } from 'marked';
 	import { processRegistry, type Process } from '$lib/processes';
 	import DiagramSection from '$lib/components/DiagramSection.svelte';
+    import type { ProcessResult } from '$lib/processes/types';
 
 	let title = $state<string>('');
 	let content = $state<string>('');
@@ -39,6 +40,8 @@
 		}
 
 		try {
+			const processResults: ProcessResult<any>[] = [];
+			
 			// Process each selected content item
 			for (const title of selectedContentTitles) {
 				// Fetch the content
@@ -48,14 +51,39 @@
 				if (data.success) {
 					// Run the process on the content
 					const result = selectedProcess.process(data.content);
-					console.log(`Process result for ${title}:`, result);
-					console.log(`Process ${selectedProcess.name} executed on ${title}`);
+					
+					processResults.push({
+						title,
+						content: result
+					});
 				} else {
 					console.error(`Error loading content for ${title}: ${data.error}`);
 				}
 			}
 			
-			alert(`Process executed successfully on ${selectedContentTitles.length} content items! Check the console for details.`);
+			// Save the results
+			if (processResults.length > 0) {
+				const saveResponse = await fetch('/api/save-results', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						processName: selectedProcess.id,
+						results: processResults
+					})
+				});
+				
+				const saveResult = await saveResponse.json();
+				
+				if (saveResult.success) {
+					alert(`Process executed successfully on ${selectedContentTitles.length} content items! Results have been saved.`);
+				} else {
+					alert(`Process executed successfully but failed to save results: ${saveResult.error}`);
+				}
+			} else {
+				alert('No results were generated. Check the console for errors.');
+			}
 		} catch (error) {
 			alert(`Error running process: ${error instanceof Error ? error.message : String(error)}`);
 		}

@@ -9,7 +9,7 @@ export interface BlockDetectionResult {
  * Helper function to check if a line should be numbered
  * This is kept here for reuse in other modules
  */
-export function shouldNumberLine(line: string): boolean {
+export function meaningfulLine(line: string): boolean {
 	const trimmed = line.trim();
 	// Don't number empty lines or lines with just whitespace
 	if (trimmed === '') return false;
@@ -21,7 +21,13 @@ export function shouldNumberLine(line: string): boolean {
 	if (trimmed.startsWith('![') && trimmed.includes('](')) return false;
 
 	// Don't number horizontal rules
-	if (trimmed === '---' || trimmed === '***' || trimmed === '___') return false;
+	if (
+		trimmed.startsWith('---') ||
+		trimmed.startsWith('***') ||
+		trimmed.startsWith('___') ||
+		trimmed.startsWith('* * *')
+	)
+		return false;
 
 	return true;
 }

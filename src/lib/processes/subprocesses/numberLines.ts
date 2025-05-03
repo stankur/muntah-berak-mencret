@@ -3,14 +3,14 @@ import {
 	detectTable,
 	detectList,
 	detectBlockQuote,
-	shouldNumberLine
+	meaningfulLine
 } from './blockDetection';
 
 export default (content: string) => {
 	try {
 		// Split content into lines
 		const lines = content.split('\n');
-        console.log(lines)
+		console.log(lines);
 
 		// Initialize variables
 		const result: string[] = [];
@@ -33,7 +33,7 @@ export default (content: string) => {
 			if (buffer.length === 0) return [];
 
 			// Only number the first line of a block if it should be numbered
-			if (shouldNumberLine(buffer[0])) {
+			if (meaningfulLine(buffer[0])) {
 				const numberedFirstLine = `${lineNumber++}: ${buffer[0]}`;
 				return [numberedFirstLine, ...buffer.slice(1)];
 			}
@@ -66,8 +66,8 @@ export default (content: string) => {
 			// Check for tables
 			const tableResult = detectTable(line, buffer, inTable);
 			if (tableResult.isBlock) {
-                console.log(line)
-                console.log(tableResult);
+				console.log(line);
+				console.log(tableResult);
 
 				buffer = tableResult.buffer;
 
@@ -132,7 +132,7 @@ export default (content: string) => {
 			// Only add line number if it should be numbered
 			if (trimmedLine !== '') {
 				ensureNewLine();
-				if (shouldNumberLine(line)) {
+				if (meaningfulLine(line)) {
 					result.push(`${lineNumber++}: ${line}`);
 				} else {
 					result.push(line);

@@ -1,6 +1,6 @@
 import type { Process } from '../types';
 import { processRegistry } from '../registry';
-import MarkdownRenderer from '../components/MarkdownRenderer.svelte';
+import MarkdownRenderer from '../renderers/MarkdownRenderer.svelte';
 
 /**
  * Identity renderer - a Svelte component that renders markdown content

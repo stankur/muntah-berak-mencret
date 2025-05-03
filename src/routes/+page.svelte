@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { marked } from 'marked';
-	import { processRegistry, type Process } from '$lib/processes';
+	import { processRegistry, type Process, type AsyncProcess } from '$lib/processes';
 	import DiagramSection from '$lib/components/DiagramSection.svelte';
 	import type { ProcessResult } from '$lib/processes/types';
 
 	// Define interfaces for process runs and content files
 	interface ProcessRun {
 		folderName: string;
-		processId: string; 
+		processId: string;
 		dateTime: string;
 		displayName: string;
 	}
@@ -26,9 +26,9 @@
 	let isLoading = $state<boolean>(false);
 
 	// Process-related state
-	let selectedProcess = $state<Process<any> | null>(null);
+	let selectedProcess = $state<Process<any> | AsyncProcess<any> | null>(null);
 	let selectedContentTitles = $state<string[]>([]);
-	let processes = $state<Process<any>[]>([]);
+	let processes = $state<(Process<any> | AsyncProcess<any>)[]>([]);
 
 	// Results-related state
 	let processRuns = $state<ProcessRun[]>([]);
@@ -37,7 +37,7 @@
 	let selectedRunContent = $state<ContentFile | null>(null);
 	let resultContent = $state<any | null>(null);
 	let isLoadingResult = $state<boolean>(false);
-	let resultProcess = $state<Process<any> | null>(null);
+	let resultProcess = $state<Process<any> | AsyncProcess<any> | null>(null);
 
 	// Load available processes
 	onMount(() => {
@@ -71,8 +71,15 @@
 				const data = await response.json();
 
 				if (data.success) {
-					// Run the process on the content
-					const result = selectedProcess.process(data.content);
+					// Run the process on the content, handling both sync and async
+					let result;
+					if (processRegistry.isAsync(selectedProcess.id)) {
+						// Handle async process
+						result = await selectedProcess.process(data.content);
+					} else {
+						// Handle sync process
+						result = selectedProcess.process(data.content);
+					}
 
 					processResults.push({
 						title,
@@ -189,10 +196,10 @@
 
 			if (data.success) {
 				resultContent = data.result;
-				
+
 				// Get the process from the registry using the process ID
 				resultProcess = processRegistry.getById(selectedRun.processId) || null;
-				
+
 				if (!resultProcess) {
 					console.warn(`Process with ID ${selectedRun.processId} not found in registry`);
 				}
@@ -471,13 +478,15 @@
 				{#if isLoadingResult}
 					<p>Loading...</p>
 				{:else if resultProcess}
-                <resultProcess.renderer input={resultContent.content}/>
+					<resultProcess.renderer input={resultContent.content} />
 				{:else}
 					<div class="prose">
-						<p class="text-red-500">
-							Process renderer not available. Displaying raw content:
-						</p>
-						<pre class="overflow-auto rounded bg-gray-100 p-2">{JSON.stringify(resultContent.content, null, 2)}</pre>
+						<p class="text-red-500">Process renderer not available. Displaying raw content:</p>
+						<pre class="overflow-auto rounded bg-gray-100 p-2">{JSON.stringify(
+								resultContent.content,
+								null,
+								2
+							)}</pre>
 					</div>
 				{/if}
 			</div>

@@ -4,6 +4,7 @@
 	import { processRegistry, type Process, type AsyncProcess } from '$lib/processes';
 	import DiagramSection from '$lib/components/DiagramSection.svelte';
 	import type { ProcessResult } from '$lib/processes/types';
+	import Editor from '$lib/services/prosemirror/Editor.svelte';
 
 	// Define interfaces for process runs and content files
 	interface ProcessRun {
@@ -18,8 +19,9 @@
 		title: string;
 	}
 
+	let editor: Editor;
+
 	let title = $state<string>('');
-	let content = $state<string>('');
 	let titles = $state<string[]>([]);
 	let selectedTitle = $state<string | null>(null);
 	let selectedContent = $state<string>('');
@@ -228,6 +230,8 @@
 	}
 
 	async function handleSave() {
+        const content = editor.getMarkdown()
+        
 		if (!title.trim() || !content.trim()) {
 			alert('Please provide both title and content');
 			return;
@@ -250,7 +254,6 @@
 				await loadTitles();
 				// Clear the form
 				title = '';
-				content = '';
 			} else {
 				alert(`Error: ${result.error}`);
 			}
@@ -338,12 +341,7 @@
 			<label for="title" class="mb-1 block">Title:</label>
 			<input id="title" type="text" bind:value={title} class="w-full rounded-md border p-2" />
 		</div>
-
-		<div class="mb-4">
-			<label for="content" class="mb-1 block">Content:</label>
-			<textarea id="content" bind:value={content} rows="10" class="bdorer w-full rounded-md p-2"
-			></textarea>
-		</div>
+		<Editor bind:this={editor} />
 
 		<button
 			class="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"

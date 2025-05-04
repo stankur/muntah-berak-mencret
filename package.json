@@ -14,7 +14,7 @@
 		"lint": "prettier --check . && eslint ."
 	},
 	"devDependencies": {
-		"@eslint/compat": "^1.2.5",
+		"@eslint/compat": "^1.2.8",
 		"@eslint/js": "^9.18.0",
 		"@sveltejs/adapter-vercel": "^5.6.3",
 		"@sveltejs/kit": "^2.16.0",
@@ -44,11 +44,19 @@
 	"dependencies": {
 		"@langchain/core": "^0.3.51",
 		"@langchain/openai": "^0.5.10",
+		"@types/turndown": "^5.0.5",
 		"gpt-tokenizer": "^2.9.0",
+		"html-to-md": "^0.8.8",
 		"langchain": "^0.3.24",
 		"markdown-it": "^14.1.0",
 		"marked": "^15.0.11",
 		"mermaid": "^11.6.0",
+		"prosemirror-markdown": "^1.13.2",
+		"prosemirror-model": "^1.25.1",
+		"prosemirror-schema-list": "^1.5.1",
+		"prosemirror-state": "^1.4.3",
+		"prosemirror-tables": "^1.7.1",
+		"prosemirror-view": "^1.39.2",
 		"zod": "^3.24.3"
 	}
 }

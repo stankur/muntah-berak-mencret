@@ -15,7 +15,7 @@ export default async function detectTitles(content: string): Promise<TitleDetect
 	const numberedBlocks = blocks.map((block, index) => `L${index}: ${block.content}`);
 
 	// Define the maximum token limit (20% of GPT-4o's context window)
-	const MAX_TOKEN_LIMIT = Math.floor(128000 * 0.01); // 8% of context window
+	const MAX_TOKEN_LIMIT = Math.floor(128000 * 0.05); // 10% of context window
 
 	// Group blocks to stay within token limit
 	const blockGroups: string[][] = [];
@@ -38,16 +38,17 @@ export default async function detectTitles(content: string): Promise<TitleDetect
     1. Figure title, Table titles, Chart tile, and other attachment titles or labels should never be considered as textual section titles. They don't count as title. Line breaks are also not considered as title.
     1a) Labels that are describing figures, tables, or other attachments, are not counted as title. 
     1b) Titles should not be describing attachments. The detected titles should be a label for more than 1 block below
-    2. Titles are not meant to be paragraphs, they are concise. So if you think that a block feels like an introduction, but it is not visibly of a less length than its surrounding, it is most probably not a title.
-    3. The detection is for the full block. If you believe that the start of the block is a title, but not everything in the block, don't consider the block to be a title.
-    3a) when you are trying to reason that a block is a title for step 3, you need to mention the whole block, not only the start, we have an automated checker that will fail if you don't mentione the whole L<number> content.
-    3b) If your argument about the block passing requirement 3 doesn't mention the whole block, and just a portion, that it probably doesn't pass the third requirement. You should literally mention the whole block in your reasoning for this step. So, when I see the reasoning for this step, I need to see the exact block in it.
-    4. Occationally, there will be a list of items, each with a label block and a series of paragraphs following them. This could range from:
+    2. Title must be visually distinct from their surroundings. Title might be bolded, might have all capital letters, italicized, or have some other variations. Note that this is not about the content. It doesn't matter whether a block content seems to be a title if there is no visual distinction, then this should be skipped.
+    3. Titles are not meant to be paragraphs, they are concise. So if you think that a block feels like an introduction, but it is not visibly of a less length than its surrounding, it is most probably not a title.
+    4. The detection is for the full block. If you believe that the start of the block is a title, but not everything in the block, don't consider the block to be a title.
+    4a) when you are trying to reason that a block is a title for step 3, you need to mention the whole block, not only the start, we have an automated checker that will fail if you don't mentione the whole L<number> content.
+    4b) If your argument about the block passing requirement 3 doesn't mention the whole block, and just a portion, that it probably doesn't pass the third requirement. You should literally mention the whole block in your reasoning for this step. So, when I see the reasoning for this step, I need to see the exact block in it.
+    5. Occationally, there will be a list of items, each with a label block and a series of paragraphs following them. This could range from:
      - a list of questions, with their answers as paragraphs follwoing the question labels
      - a list of items/nouns, with their descriptions as paragraphs following the items labels
 
      In this case, the label blocks are counted as titles too, even if they are not typically considered as section title. Requirement 4 is meant to be general and lenient, so if you are considering something might meet this requirement, it does.
-    5. Reflect on every point of this specification before you give your answer. Each block you identify as title must meet these specifcations.
+    6. Reflect on every point of this specification before you give your answer. Each block you identify as title must meet these specifcations.
 
     It is okay for the text to not have any title, in fact it is entirely possible since I am giving you a sliding window of a content. 
         

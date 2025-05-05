@@ -8,4 +8,5 @@ export * from './registry';
 import './implementations/identity';
 import './implementations/line_numbering';
 import './implementations/title_detection';
-import './implementations/block_divide'
+import './implementations/block_divide';
+import './implementations/block_compression';

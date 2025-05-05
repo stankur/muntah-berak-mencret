@@ -40,9 +40,15 @@ export default async function detectTitles(content: string): Promise<TitleDetect
     1b) Titles should not be describing attachments. The detected titles should be a label for more than 1 block below
     2. Titles are not meant to be paragraphs, they are concise. So if you think that a block feels like an introduction, but it is not visibly of a less length than its surrounding, it is most probably not a title.
     3. The detection is for the full block. If you believe that the start of the block is a title, but not everything in the block, don't consider the block to be a title.
-    3a) when you are trying to reason that a block is a title for step 3, you need to mention the whole block, not only the stat, we have an automated checker that will fail if you don't mentione the whole L<number> content.
-    4. Reflect on every point of this specification before you give your answer. Each block you identify as title must meet these specifcations.
-t
+    3a) when you are trying to reason that a block is a title for step 3, you need to mention the whole block, not only the start, we have an automated checker that will fail if you don't mentione the whole L<number> content.
+    3b) If your argument about the block passing requirement 3 doesn't mention the whole block, and just a portion, that it probably doesn't pass the third requirement. You should literally mention the whole block in your reasoning for this step. So, when I see the reasoning for this step, I need to see the exact block in it.
+    4. Occationally, there will be a list of items, each with a label block and a series of paragraphs following them. This could range from:
+     - a list of questions, with their answers as paragraphs follwoing the question labels
+     - a list of items/nouns, with their descriptions as paragraphs following the items labels
+
+     In this case, the label blocks are counted as titles too, even if they are not typically considered as section title. Requirement 4 is meant to be general and lenient, so if you are considering something might meet this requirement, it does.
+    5. Reflect on every point of this specification before you give your answer. Each block you identify as title must meet these specifcations.
+
     It is okay for the text to not have any title, in fact it is entirely possible since I am giving you a sliding window of a content. 
         
     For each group, provide the line numbers (using the zero-indexed L numbers) and explain your reasoning. In your reasoning you must explain your check against the 4 requirements mentioned above, in a numbered list of 4 items. Please reason and think deeply before you give your answer. You need to start your answer with your thinking.

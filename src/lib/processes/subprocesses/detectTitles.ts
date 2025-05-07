@@ -14,7 +14,7 @@ export default async function detectTitles(content: string): Promise<TitleDetect
 	// Prepend block numbers (zero-indexed)
 	const numberedBlocks = blocks.map((block, index) => `L${index}: ${block.content}`);
 
-	// Define the maximum token limit (20% of GPT-4o's context window)
+	// Define the maximum token limit (5% of GPT-4o's context window)
 	const MAX_TOKEN_LIMIT = Math.floor(128000 * 0.05); // 10% of context window
 
 	// Group blocks to stay within token limit

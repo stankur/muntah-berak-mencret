@@ -8,7 +8,8 @@ import detectTitles from '$lib/processes/subprocesses/detectTitles';
 import type { Block } from '$lib/processes/implementations/block_divide';
 import type {
 	BlockElement,
-	SummaryElement
+	SummaryElement,
+	BlockSummarizationResult
 } from '$lib/processes/implementations/block_summarization';
 
 // Define the output schema using Zod
@@ -92,7 +93,7 @@ async function summarizeSection(
 /**
  * Summarizes blocks between titles
  */
-export default async function summarizeBlocks(content: string): Promise<BlockElement[]> {
+export default async function summarizeBlocks(content: string): Promise<BlockSummarizationResult> {
 	console.log(`[summarizeBlocks] Starting process on content of length: ${content.length}`);
 
 	// Step 1: Divide content into blocks
@@ -196,5 +197,10 @@ export default async function summarizeBlocks(content: string): Promise<BlockEle
 	console.log(
 		`[summarizeBlocks] Process complete. Generated ${result.length} elements (titles + summaries)`
 	);
-	return result;
+	
+	// Return both the processed elements and the original blocks
+	return {
+		elements: result,
+		originalBlocks: blocks
+	};
 }

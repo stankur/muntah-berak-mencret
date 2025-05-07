@@ -1,29 +1,22 @@
 <script lang="ts">
   import { marked } from 'marked';
-  import type { BlockElement, TitleElement, SummaryElement } from '$lib/processes/implementations/block_summarization';
+  import type { BlockElement, TitleElement, SummaryElement, BlockSummarizationResult } from '$lib/processes/implementations/block_summarization';
+  import type { Block } from '$lib/processes/implementations/block_divide';
 
-  let { input }: { input: BlockElement[] } = $props();
+  let { input }: { input: BlockSummarizationResult } = $props();
   type ViewMode = 'side-by-side' | 'summaries-only' | 'original-only';
   let viewMode = $state<ViewMode>('side-by-side');
   
   // Function to get the original content blocks for a range of blocks
-  function getOriginalContentBlocks(blocks: BlockElement[], from: number, to: number): string[] {
-    // Find all title elements to get their original content
-    const titleElements = blocks.filter(
-      (block): block is TitleElement => block.type === 'title'
-    );
-    
-    // Create a map of block index to original content
-    const blockContentMap = new Map<number, string>();
-    titleElements.forEach(title => {
-      blockContentMap.set(title.blockIndex, title.content);
-    });
+  function getOriginalContentBlocks(from: number, to: number): string[] {
+    // Get the original blocks from the input
+    const { originalBlocks } = input;
     
     // Collect all blocks in the range as separate items
     const contentBlocks: string[] = [];
     for (let i = from; i <= to; i++) {
-      if (blockContentMap.has(i)) {
-        contentBlocks.push(blockContentMap.get(i)!);
+      if (i >= 0 && i < originalBlocks.length) {
+        contentBlocks.push(originalBlocks[i].content);
       }
     }
     
@@ -44,7 +37,7 @@
 </div>
 
 <div class="flex flex-col gap-4">
-  {#each input as element}
+  {#each input.elements as element}
     {#if element.type === 'title'}
       <div 
         class={[
@@ -74,7 +67,7 @@
           <div style="display: flex;">
             <div style="width: 50%;" class="flex flex-col gap-2">
               <!-- Find the original content for this summary's source blocks -->
-              {#each getOriginalContentBlocks(input, element.sourceBlocks.from, element.sourceBlocks.to) as block}
+              {#each getOriginalContentBlocks(element.sourceBlocks.from, element.sourceBlocks.to) as block}
                 <div class="mb-2">
                   {@html marked(block)}
                 </div>
@@ -90,7 +83,7 @@
           </div>
         {:else if viewMode === 'original-only'}
           <div class="flex flex-col gap-2">
-            {#each getOriginalContentBlocks(input, element.sourceBlocks.from, element.sourceBlocks.to) as block}
+            {#each getOriginalContentBlocks(element.sourceBlocks.from, element.sourceBlocks.to) as block}
               <div class="mb-2">
                 {@html marked(block)}
               </div>

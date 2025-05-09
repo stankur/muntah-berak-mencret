@@ -11,3 +11,4 @@ import './implementations/title_detection';
 import './implementations/block_divide';
 import './implementations/block_compression';
 import './implementations/block_summarization';
+import './implementations/title_numbering_summarization'

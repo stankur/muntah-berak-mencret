@@ -63,7 +63,7 @@ export default async function detectTitles(content: string): Promise<TitleDetect
 	const outputSchema = z.object({
 		highConfidence: z.object({
 			reason: z.string().describe('Explanation of why these lines are highly likely to be titles'),
-			lines: z.array(z.number()),
+			lines: z.array(z.number())
 		}),
 		moderateConfidence: z.object({
 			reason: z
@@ -107,7 +107,7 @@ export default async function detectTitles(content: string): Promise<TitleDetect
 
 	// Set up LangChain with OpenRouter
 	const model = new ChatOpenAI({
-		modelName: 'anthropic/claude-3.7-sonnet',
+		modelName: 'openai/gpt-4o',
 		temperature: 0.1,
 		openAIApiKey: PUBLIC_OPENROUTER_API_KEY,
 		configuration: {
@@ -131,14 +131,17 @@ export default async function detectTitles(content: string): Promise<TitleDetect
 				`Processing group ${i + 1}/${blockGroups.length} with ${blockGroups[i].length} blocks`
 			);
 
-			// Run the chain for this group
-			const response = await prompt.pipe(model).invoke({
+			const formattedPrompt = await prompt.format({
 				format_instructions: formatInstructions,
 				content: groupContent
 			});
-            
-            console.log("response: ");
-            console.log(response.content.toString());
+
+			console.log('Executed prompt:\n', formattedPrompt);
+
+			const response = await model.invoke(formattedPrompt);
+
+			console.log('response: ');
+			console.log(response.content.toString());
 
 			// Parse the structured output
 			const parsedOutput = await parser.parse(response.content.toString());

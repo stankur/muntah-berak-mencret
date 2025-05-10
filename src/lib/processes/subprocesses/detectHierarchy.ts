@@ -14,6 +14,16 @@ import type {
 } from '$lib/processes/implementations/title_numbering_summarization';
 import numberTitles from '$lib/processes/subprocesses/numberTitles';
 
+/**
+ * Escapes curly braces in a string by doubling them
+ * This is needed for LangChain prompt templates where curly braces are used for variable substitution
+ * @param str The string to escape
+ * @returns The escaped string with {{ and }} instead of { and }
+ */
+function escapeCurlyBraces(str: string): string {
+	return str.replace(/\{/g, '{{').replace(/\}/g, '}}');
+}
+
 // Base prompt for hierarchy detection
 const BASE_HIERARCHY_PROMPT = `
 below is an excerpt which has been passed through a preprocessing step of tagging section title blocks. The blocks identified to be section titles have been prepended with T<number> at the start of the blocks. The blocks between the titles have been summarized to provide a compressed context of the content below each title. Please reason about the hierarchy of the titles, and output your final answer of the hierarchy in an ascii tree format. These are the requirements: 
@@ -311,9 +321,9 @@ async function processWindow(
 
 	for (const element of windowElements) {
 		if (element.type === 'title') {
-			promptContent += `${element.numberedContent}\n`;
+			promptContent += `${escapeCurlyBraces(element.numberedContent)}\n`;
 		} else {
-			promptContent += `${element.content}\n\n`;
+			promptContent += `${escapeCurlyBraces(element.content)}\n\n`;
 		}
 	}
 
@@ -327,7 +337,7 @@ async function processWindow(
 	const prompt = ChatPromptTemplate.fromTemplate(promptContent);
 
 	try {
-		// Execute the prompt
+		// Execute the prompt - escape any curly braces in the content to prevent template interference
 		const response = await model.invoke(await prompt.format({}));
 		const asciiTree = response.content.toString();
 
@@ -447,8 +457,13 @@ ASCII Tree to convert:
 	const prompt = ChatPromptTemplate.fromTemplate(promptContent);
 	console.log('after promtp template');
 	try {
-		// Execute the prompt
-		const response = await model.invoke(await prompt.format({ formatInstructions, asciiTree }));
+		// Execute the prompt - escape curly braces in the ASCII tree to prevent interference with prompt template
+		const response = await model.invoke(
+			await prompt.format({
+				formatInstructions,
+				asciiTree: escapeCurlyBraces(asciiTree)
+			})
+		);
 
 		// Parse the structured output
 		const parsedOutput = await parser.parse(response.content.toString());

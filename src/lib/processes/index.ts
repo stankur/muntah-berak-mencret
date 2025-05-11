@@ -13,3 +13,5 @@ import './implementations/block_compression';
 import './implementations/block_summarization';
 import './implementations/title_numbering_summarization';
 import './implementations/hierarchy_detection';
+import './implementations/hierarchy_building';
+import './implementations/hierarchy_summarization';

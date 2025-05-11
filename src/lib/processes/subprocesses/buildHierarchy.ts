@@ -8,8 +8,8 @@ import type {
 } from '$lib/processes/implementations/title_numbering_summarization';
 import type {
 	HierarchyBuildingResult,
-	SectionContainer,
-	Section
+	SectionContainerWithDirectDefinition,
+	SectionWithDirectDefinition
 } from '$lib/processes/implementations/hierarchy_building';
 import detectHierarchy from '$lib/processes/subprocesses/detectHierarchy';
 import type { Block } from '../implementations/block_divide';
@@ -80,8 +80,8 @@ function processTitleHierarchy(
 	elements: NumberedBlockElement[],
 	titleContentMap: Map<number, string>,
 	originalBlocks: Block[]
-): SectionContainer {
-	const sections: Section[] = [];
+): SectionContainerWithDirectDefinition {
+	const sections: SectionWithDirectDefinition[] = [];
 
 	for (const node of hierarchy) {
 		// Get the heading content for this node
@@ -153,58 +153,53 @@ function findDirectSummaries(node: TitleHierarchy, elements: NumberedBlockElemen
  * @returns Array of paragraph strings
  */
 function findDirectParagraphs(
-    node: TitleHierarchy,
-    elements: NumberedBlockElement[],
-    originalBlocks: Block[]
+	node: TitleHierarchy,
+	elements: NumberedBlockElement[],
+	originalBlocks: Block[]
 ): string[] {
-    const directParagraphs: string[] = [];
-    
-    // Get the last title number in this node's content
-    const lastTitleNum = node.content[node.content.length - 1];
-    
-    // Find the index of this title in the elements array
-    const titleIndex = elements.findIndex(
-        element => element.type === 'title' && getTitleNumber(element as NumberedTitleElement) === lastTitleNum
-    );
-    
-    if (titleIndex === -1 || titleIndex >= elements.length - 1) {
-        return directParagraphs;
-    }
-    
-    // Start looking at elements after this title
-    let currentIndex = titleIndex + 1;
-    
-    // Process summaries until we hit another title or run out of elements
-    while (
-        currentIndex < elements.length && 
-        elements[currentIndex].type === 'summary'
-    ) {
-        const summaryElement = elements[currentIndex];
-        
-        // Get the original blocks for this summary
-        if ('sourceBlocks' in summaryElement) {
-            const { from, to } = summaryElement.sourceBlocks;
-            
-            // Add the original blocks as paragraph strings
-            for (let i = from; i <= to; i++) {
-                if (i < originalBlocks.length) {
-                    directParagraphs.push(originalBlocks[i].content);
-                }
-            }
-        }
-        
-        currentIndex++;
-        
-        // If the next element is a title, stop processing
-        if (
-            currentIndex < elements.length && 
-            elements[currentIndex].type === 'title'
-        ) {
-            break;
-        }
-    }
-    
-    return directParagraphs;
+	const directParagraphs: string[] = [];
+
+	// Get the last title number in this node's content
+	const lastTitleNum = node.content[node.content.length - 1];
+
+	// Find the index of this title in the elements array
+	const titleIndex = elements.findIndex(
+		(element) =>
+			element.type === 'title' && getTitleNumber(element as NumberedTitleElement) === lastTitleNum
+	);
+
+	if (titleIndex === -1 || titleIndex >= elements.length - 1) {
+		return directParagraphs;
+	}
+
+	// Start looking at elements after this title
+	let currentIndex = titleIndex + 1;
+
+	// Process summaries until we hit another title or run out of elements
+	while (currentIndex < elements.length && elements[currentIndex].type === 'summary') {
+		const summaryElement = elements[currentIndex];
+
+		// Get the original blocks for this summary
+		if ('sourceBlocks' in summaryElement) {
+			const { from, to } = summaryElement.sourceBlocks;
+
+			// Add the original blocks as paragraph strings
+			for (let i = from; i <= to; i++) {
+				if (i < originalBlocks.length) {
+					directParagraphs.push(originalBlocks[i].content);
+				}
+			}
+		}
+
+		currentIndex++;
+
+		// If the next element is a title, stop processing
+		if (currentIndex < elements.length && elements[currentIndex].type === 'title') {
+			break;
+		}
+	}
+
+	return directParagraphs;
 }
 
 /**
@@ -215,20 +210,25 @@ function findDirectParagraphs(
  * @returns Array of children (either strings or section containers)
  */
 function processChildren(
-    node: TitleHierarchy,
-    elements: NumberedBlockElement[],
-    titleContentMap: Map<number, string>,
-    originalBlocks: Block[]
-): (SectionContainer | string)[] {
-	const children: (SectionContainer | string)[] = [];
+	node: TitleHierarchy,
+	elements: NumberedBlockElement[],
+	titleContentMap: Map<number, string>,
+	originalBlocks: Block[]
+): (SectionContainerWithDirectDefinition | string)[] {
+	const children: (SectionContainerWithDirectDefinition | string)[] = [];
 	// Add direct paragraphs (strings) that belong to this section but not to subsections
 	const directParagraphs = findDirectParagraphs(node, elements, originalBlocks);
 	children.push(...directParagraphs);
-    
+
 	// If this node has child sections, process them recursively
 	if (node.children.length > 0) {
 		// Process each child node
-		const childSections = processTitleHierarchy(node.children, elements, titleContentMap, originalBlocks);
+		const childSections = processTitleHierarchy(
+			node.children,
+			elements,
+			titleContentMap,
+			originalBlocks
+		);
 
 		// Add the child sections as a section container
 		if (childSections.length > 0) {

@@ -5,17 +5,17 @@ import HierarchyBuildingRenderer from '$lib/processes/renderers/HierarchyBuildin
 import type { HierarchyDetectionResult } from '$lib/processes/implementations/hierarchy_detection';
 
 // Define the new types for the hierarchy building process
-export type SectionContainer = Section[];
+export type SectionContainerWithDirectDefinition = SectionWithDirectDefinition[];
 
-export interface Section {
-    heading: string[];
-    children: (SectionContainer | string)[];
-    directSummary: string[];
+export interface SectionWithDirectDefinition {
+	heading: string[];
+	children: (SectionContainerWithDirectDefinition | string)[];
+	directSummary: string[];
 }
 
 export interface HierarchyBuildingResult {
-    sectionContainer: SectionContainer;
-    originalResult: HierarchyDetectionResult;
+	sectionContainer: SectionContainerWithDirectDefinition;
+	originalResult: HierarchyDetectionResult;
 }
 
 /**
@@ -23,12 +23,12 @@ export interface HierarchyBuildingResult {
  * This process converts the document into a format that represents the hierarchical structure of sections
  */
 export const hierarchyBuildingProcess: AsyncProcess<HierarchyBuildingResult> = {
-    id: 'hierarchy-building',
-    name: 'Hierarchy Building Process',
-    description: 'Builds a hierarchical section structure from the hierarchy detection result',
-    process: buildHierarchy,
-    // @ts-expect-error - The renderer type is compatible but TypeScript is having trouble with it
-    renderer: HierarchyBuildingRenderer
+	id: 'hierarchy-building',
+	name: 'Hierarchy Building Process',
+	description: 'Builds a hierarchical section structure from the hierarchy detection result',
+	process: buildHierarchy,
+	// @ts-expect-error - The renderer type is compatible but TypeScript is having trouble with it
+	renderer: HierarchyBuildingRenderer
 };
 
 // Register the process with the registry using registerAsync

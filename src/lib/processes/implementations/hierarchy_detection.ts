@@ -3,7 +3,7 @@ import { processRegistry } from '$lib/processes/registry';
 import detectHierarchy from '$lib/processes/subprocesses/detectHierarchy';
 import HierarchyDetectionRenderer from '$lib/processes/renderers/HierarchyDetectionRenderer.svelte';
 import type { Block } from '$lib/processes/implementations/block_divide';
-import type { BlockElement } from '$lib/processes/implementations/block_summarization';
+import type { NumberedBlockElement } from './title_numbering_summarization';
 
 // Title hierarchy schema as specified in requirements
 export type TitleHierarchy = {
@@ -12,7 +12,7 @@ export type TitleHierarchy = {
 };
 
 export interface HierarchyDetectionResult {
-  input: BlockElement[]; // The input block elements
+  input: NumberedBlockElement[]; // The input block elements
   titleHierarchy: TitleHierarchy[]; // The detected hierarchy structure
   asciiTree: string; // ASCII tree representation
   originalBlocks: Block[]; // The original blocks from divideBlocks

@@ -39,13 +39,13 @@ export default async function summarizeHierarchy(content: string): Promise<Hiera
 
   // Set up LLM with OpenRouter
   const model = new ChatOpenAI({
-    modelName: 'openai/gpt-4.1',
-    temperature: 0.1,
-    openAIApiKey: PUBLIC_OPENROUTER_API_KEY,
-    configuration: {
-      baseURL: PUBLIC_OPENROUTER_API_URL
-    }
-  });
+		modelName: 'openai/gpt-4o',
+		temperature: 0.1,
+		openAIApiKey: PUBLIC_OPENROUTER_API_KEY,
+		configuration: {
+			baseURL: PUBLIC_OPENROUTER_API_URL
+		}
+	});
 
   // Create prompt template for summarization
   const promptTemplate = `

@@ -73,7 +73,7 @@ export default async function summarizeHierarchy(content: string): Promise<Hiera
   `;
 
   const longSummaryPromptTemplate = `
-  Summarize the following to be concise into a single paragraph. Use the source words as much as possible. Keep the most important points, and maintain the tone and personality of the writer. Write directly to the user without meta-comments or acknowledgments. Do not include footnotes, references, appendices, or other non-main content in the summary.
+  Summarize the following to be concise into a single paragraph, at most 100 words. Use the source words as much as possible. Keep the most important points, and maintain the tone and personality of the writer. Write directly to the user without meta-comments or acknowledgments. Do not include footnotes, references, appendices, or other non-main content in the summary.
 
   {content}
   `;

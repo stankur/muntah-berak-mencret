@@ -15,12 +15,30 @@ export interface Section {
   heading: string[];
   children: (SectionContainer | string)[];
   summary: string[];
+  longSummary: string[];
 }
 
 export interface HierarchySummarizationResult {
   sectionContainer: SectionContainer;
   originalResult: HierarchyBuildingResult;
 }
+
+// export interface Section {
+// 	heading: string[];
+// 	children: SectionContainer | string[];
+// 	summary: string[];
+// 	longSummary: string[];
+// 	imageUrl?: string;
+// }
+
+// export type SectionContainer = Section[];
+
+// export interface Document {
+// 	title: string[];
+// 	summary: string[];
+// 	longSummary: string[];
+// 	children: SectionContainer;
+// }
 
 /**
  * Summarizes a hierarchy by recursively collecting and processing summaries
@@ -47,20 +65,28 @@ export default async function summarizeHierarchy(content: string): Promise<Hiera
 		}
 	});
 
-  // Create prompt template for summarization
-  const promptTemplate = `
+  // Create prompt templates for summarization
+  const concisePromptTemplate = `
   Rewrite the following to be at max 15 words, and make it a good hook, while rewriting/paraphrasing inside, and not just describing what we could find inside, output the answer and nothing else:
 
   {content}
   `;
 
-  const prompt = ChatPromptTemplate.fromTemplate(promptTemplate);
+  const longSummaryPromptTemplate = `
+  Summarize the following to be concise into a single paragraph. Use the source words as much as possible. Keep the most important points, and maintain the tone and personality of the writer. Write directly to the user without meta-comments or acknowledgments. Do not include footnotes, references, appendices, or other non-main content in the summary.
+
+  {content}
+  `;
+
+  const concisePrompt = ChatPromptTemplate.fromTemplate(concisePromptTemplate);
+  const longSummaryPrompt = ChatPromptTemplate.fromTemplate(longSummaryPromptTemplate);
 
   // Process the section container recursively
   const sectionContainer = await transformSectionContainer(
     hierarchyResult.sectionContainer,
     model,
-    prompt
+    concisePrompt,
+    longSummaryPrompt
   );
 
   console.log(
@@ -79,13 +105,14 @@ export default async function summarizeHierarchy(content: string): Promise<Hiera
 async function transformSectionContainer(
   container: SectionContainerWithDirectDefinition,
   model: ChatOpenAI,
-  prompt: ChatPromptTemplate
+  concisePrompt: ChatPromptTemplate,
+  longSummaryPrompt: ChatPromptTemplate
 ): Promise<SectionContainer> {
   const result: SectionContainer = [];
   
   for (const section of container) {
     // Transform this section
-    const transformedSection = await transformSection(section, model, prompt);
+    const transformedSection = await transformSection(section, model, concisePrompt, longSummaryPrompt);
     result.push(transformedSection);
   }
   
@@ -98,31 +125,42 @@ async function transformSectionContainer(
 async function transformSection(
   section: SectionWithDirectDefinition,
   model: ChatOpenAI,
-  prompt: ChatPromptTemplate
+  concisePrompt: ChatPromptTemplate,
+  longSummaryPrompt: ChatPromptTemplate
 ): Promise<Section> {
   // First, collect all summaries from this section and its children
   const allSummaries = collectAllSummaries(section);
   
-  // Generate the concise summary using the LLM
+  // Generate the concise summary and long summary using the LLM
   let summary: string[] = [];
+  let longSummary: string[] = [];
   
   if (allSummaries.length > 0) {
     // Concatenate all summaries
     const concatenatedSummaries = allSummaries.join(' ');
     
     try {
-      console.log(`[summarizeHierarchy] Generating concise summary for section "${section.heading.join(' ')}"`);
+      console.log(`[summarizeHierarchy] Generating summaries for section "${section.heading.join(' ')}"`);
       
-      const response = await prompt.pipe(model).invoke({
-        content: concatenatedSummaries
-      });
+      // Generate both summaries in parallel for efficiency
+      const [conciseResponse, longResponse] = await Promise.all([
+        concisePrompt.pipe(model).invoke({
+          content: concatenatedSummaries
+        }),
+        longSummaryPrompt.pipe(model).invoke({
+          content: concatenatedSummaries
+        })
+      ]);
       
-      summary = [response.content.toString().trim()];
+      summary = [conciseResponse.content.toString().trim()];
+      longSummary = [longResponse.content.toString().trim()];
       
-      console.log(`[summarizeHierarchy] Generated summary: "${summary[0]}"`);
+      console.log(`[summarizeHierarchy] Generated concise summary: "${summary[0]}"`);
+      console.log(`[summarizeHierarchy] Generated long summary: "${longSummary[0]}"`);
     } catch (error) {
-      console.error(`[summarizeHierarchy] Error generating summary:`, error);
+      console.error(`[summarizeHierarchy] Error generating summaries:`, error);
       summary = [allSummaries[0]];
+      longSummary = [allSummaries[0]];
     }
   }
   
@@ -139,7 +177,8 @@ async function transformSection(
       const transformed = await transformSectionContainer(
         child as SectionContainerWithDirectDefinition,
         model,
-        prompt
+        concisePrompt,
+        longSummaryPrompt
       );
       transformedChildren.push(transformed);
     }
@@ -149,7 +188,8 @@ async function transformSection(
   return {
     heading: section.heading,
     children: transformedChildren,
-    summary
+    summary,
+    longSummary
   };
 }
 

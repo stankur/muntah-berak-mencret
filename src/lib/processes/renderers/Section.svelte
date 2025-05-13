@@ -18,6 +18,12 @@
 				{section.summary[0]}
 			</div>
 		{/if}
+		
+		{#if section.longSummary && section.longSummary.length > 0}
+			<div class="mt-1 border-l-4 border-green-500 bg-green-50 p-2 text-sm">
+				{section.longSummary[0]}
+			</div>
+		{/if}
 	</summary>
 
 	<div class="flex flex-col gap-4">

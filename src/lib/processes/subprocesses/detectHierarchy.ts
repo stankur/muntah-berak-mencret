@@ -20,7 +20,7 @@ import numberTitles from '$lib/processes/subprocesses/numberTitles';
  * @param str The string to escape
  * @returns The escaped string with {{ and }} instead of { and }
  */
-function escapeCurlyBraces(str: string): string {
+export function escapeCurlyBraces(str: string): string {
 	return str.replace(/\{/g, '{{').replace(/\}/g, '}}');
 }
 

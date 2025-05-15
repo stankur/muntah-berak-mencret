@@ -125,10 +125,11 @@ export default async function detectTitles(content: string): Promise<TitleDetect
 		let highConfidenceReason = '';
 		let moderateConfidenceReason = '';
 
-		for (let i = 0; i < blockGroups.length; i++) {
-			const groupContent = blockGroups[i].join('\n\n');
+		// Create an array of promises to process all block groups in parallel
+		const processingPromises = blockGroups.map(async (blockGroup, i) => {
+			const groupContent = blockGroup.join('\n\n');
 			console.log(
-				`Processing group ${i + 1}/${blockGroups.length} with ${blockGroups[i].length} blocks`
+				`Processing group ${i + 1}/${blockGroups.length} with ${blockGroup.length} blocks`
 			);
 
 			const formattedPrompt = await prompt.format({
@@ -146,23 +147,44 @@ export default async function detectTitles(content: string): Promise<TitleDetect
 			// Parse the structured output
 			const parsedOutput = await parser.parse(response.content.toString());
 
+			// Return an object with the results and index
+			return {
+				index: i,
+				highConfidence: {
+					lines: parsedOutput.highConfidence.lines,
+					reason: parsedOutput.highConfidence.reason
+				},
+				moderateConfidence: {
+					lines: parsedOutput.moderateConfidence.lines,
+					reason: parsedOutput.moderateConfidence.reason
+				}
+			};
+		});
+
+		// Wait for all promises to resolve
+		const results = await Promise.all(processingPromises);
+
+		// Process results in the original order
+		for (const result of results) {
+			const i = result.index;
+			
 			// Add lines to the combined results
-			allHighConfidenceLines.push(...parsedOutput.highConfidence.lines);
-			allModerateConfidenceLines.push(...parsedOutput.moderateConfidence.lines);
+			allHighConfidenceLines.push(...result.highConfidence.lines);
+			allModerateConfidenceLines.push(...result.moderateConfidence.lines);
 
 			// Combine reasons
-			if (parsedOutput.highConfidence.reason) {
+			if (result.highConfidence.reason) {
 				highConfidenceReason +=
 					(highConfidenceReason ? '\n\n' : '') +
 					(blockGroups.length > 1 ? `Group ${i + 1}: ` : '') +
-					parsedOutput.highConfidence.reason;
+					result.highConfidence.reason;
 			}
 
-			if (parsedOutput.moderateConfidence.reason) {
+			if (result.moderateConfidence.reason) {
 				moderateConfidenceReason +=
 					(moderateConfidenceReason ? '\n\n' : '') +
 					(blockGroups.length > 1 ? `Group ${i + 1}: ` : '') +
-					parsedOutput.moderateConfidence.reason;
+					result.moderateConfidence.reason;
 			}
 		}
 

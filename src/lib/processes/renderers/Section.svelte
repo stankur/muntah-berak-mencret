@@ -24,6 +24,12 @@
 				{section.longSummary[0]}
 			</div>
 		{/if}
+		
+		{#if 'imageUrl' in section && section.imageUrl}
+			<div class="mt-1 flex justify-center">
+				<img src={section.imageUrl} alt="Section visualization" class="w-16 h-16 rounded object-cover" />
+			</div>
+		{/if}
 	</summary>
 
 	<div class="flex flex-col gap-4">

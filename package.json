@@ -45,6 +45,7 @@
 		"@langchain/core": "^0.3.51",
 		"@langchain/openai": "^0.5.10",
 		"@types/turndown": "^5.0.5",
+		"cloudinary": "^2.6.1",
 		"gpt-tokenizer": "^2.9.0",
 		"html-to-md": "^0.8.8",
 		"langchain": "^0.3.24",

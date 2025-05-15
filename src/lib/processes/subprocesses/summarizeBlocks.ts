@@ -158,40 +158,61 @@ export default async function summarizeBlocks(content: string): Promise<BlockSum
 
 	// Step 5: Process all sections
 	const result: BlockElement[] = [];
+	const sectionPromises: Promise<{ titleElement?: BlockElement; summaries: SummaryElement[] }>[] = [];
 
-	// Process each pair of adjacent indices
+	// Prepare all section processing tasks
 	for (let i = 0; i < titleIndices.length - 1; i++) {
 		const currentIdx = titleIndices[i];
 		const nextIdx = titleIndices[i + 1];
+		
+		const task = async () => {
+			let titleElement: BlockElement | undefined;
+			
+			// If current index is a real title (not the start sentinel), create title element
+			if (currentIdx >= 0 && currentIdx < blocks.length) {
+				titleElement = {
+					type: 'title',
+					content: blocks[currentIdx].content,
+					confidence: titleConfidence.get(currentIdx)!,
+					blockIndex: currentIdx
+				};
+				console.log(`[summarizeBlocks] Added title at index ${currentIdx}`);
+			}
 
-		// If current index is a real title (not the start sentinel), add it to results
-		if (currentIdx >= 0 && currentIdx < blocks.length) {
-			result.push({
-				type: 'title',
-				content: blocks[currentIdx].content,
-				confidence: titleConfidence.get(currentIdx)!,
-				blockIndex: currentIdx
-			});
-			console.log(`[summarizeBlocks] Added title at index ${currentIdx}`);
+			// Process content between current position (or after title) and next title
+			const startIdx = currentIdx + 1;
+			const endIdx = nextIdx - 1;
+
+			// Only process if there are blocks in this range
+			let summaries: SummaryElement[] = [];
+			if (startIdx <= endIdx) {
+				summaries = await summarizeSection(
+					blocks,
+					startIdx,
+					endIdx,
+					model,
+					prompt,
+					formatInstructions,
+					parser
+				);
+			}
+			
+			return { titleElement, summaries };
+		};
+		
+		sectionPromises.push(task());
+	}
+
+	// Execute all section processing tasks in parallel
+	console.log(`[summarizeBlocks] Processing ${sectionPromises.length} sections in parallel`);
+	const sectionResults = await Promise.all(sectionPromises);
+	
+	// Combine results in order
+	for (const sectionResult of sectionResults) {
+		if (sectionResult.titleElement) {
+			result.push(sectionResult.titleElement);
 		}
-
-		// Process content between current position (or after title) and next title
-		const startIdx = currentIdx + 1;
-		const endIdx = nextIdx - 1;
-
-		// Only process if there are blocks in this range
-		if (startIdx <= endIdx) {
-			const summaries = await summarizeSection(
-				blocks,
-				startIdx,
-				endIdx,
-				model,
-				prompt,
-				formatInstructions,
-				parser
-			);
-			result.push(...summaries);
-		}
+		result.push(...sectionResult.summaries);
 	}
 
 	console.log(

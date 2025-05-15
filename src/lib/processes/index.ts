@@ -15,3 +15,4 @@ import './implementations/title_numbering_summarization';
 import './implementations/hierarchy_detection';
 import './implementations/hierarchy_building';
 import './implementations/hierarchy_summarization';
+import './implementations/image_generation';

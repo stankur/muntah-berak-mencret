@@ -77,6 +77,9 @@ async function transformSection(section: Section): Promise<SectionWithImage> {
 		try {
 			console.log(`[generateImages] Generating image for section "${section.heading.join(' ')}"`);
 
+			// Join all paragraphs with spaces for image generation
+			const fullSummary = section.longSummary.join(' ');
+			
 			// Call our API endpoint to generate the image
 			const response = await fetch('/api/generate-image', {
 				method: 'POST',
@@ -84,7 +87,7 @@ async function transformSection(section: Section): Promise<SectionWithImage> {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					summary: escapeCurlyBraces(section.longSummary[0])
+					summary: escapeCurlyBraces(fullSummary)
 				})
 			});
 

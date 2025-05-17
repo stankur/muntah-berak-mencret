@@ -1,6 +1,8 @@
 import { ChatOpenAI } from '@langchain/openai';
 import { PUBLIC_OPENROUTER_API_KEY, PUBLIC_OPENROUTER_API_URL } from '$env/static/public';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { StructuredOutputParser } from '@langchain/core/output_parsers';
+import { z } from 'zod';
 import type {
 	HierarchyBuildingResult,
 	SectionContainerWithDirectDefinition,
@@ -16,7 +18,7 @@ export interface Section {
 	children: (SectionContainer | string)[];
 	summary: string[];
 	longSummary: string[];
-    imageUrl?: string;
+	imageUrl?: string;
 }
 
 export interface HierarchySummarizationResult {
@@ -40,6 +42,12 @@ export interface HierarchySummarizationResult {
 // 	longSummary: string[];
 // 	children: SectionContainer;
 // }
+
+// Define a Zod schema for the paragraphs array
+const paragraphsSchema = z.array(z.string());
+const paragraphsParser = StructuredOutputParser.fromZodSchema(paragraphsSchema);
+// Get format instructions from the parser
+const formatInstructions = paragraphsParser.getFormatInstructions();
 
 /**
  * Summarizes a hierarchy by recursively collecting and processing summaries
@@ -69,35 +77,48 @@ export default async function summarizeHierarchy(
 	});
 
 	// Create prompt templates for summarization
+	const initialSummaryPromptTemplate = `
+  Summarize the following to be concise into a single paragraph. Use the source words as much as possible. Keep the most important points, and maintain the tone and personality of the writer. Write directly to the user without meta-comments or acknowledgments.
+  Do not include footnotes, references, appendices, or other non-main content in the summary.
+
+  {content}
+  `;
+
 	const concisePromptTemplate = `
   Rewrite the following to be at max 15 words, and make it a good hook, while rewriting/paraphrasing inside, and not just describing what we could find inside, output the answer and nothing else:
 
   {content}
   `;
 
-	const longSummaryPromptTemplate = `
-  Summarize the following to be concise into a single paragraph, at most 100 words. Use the source words as much as possible. Keep the most important points, and maintain the tone and personality of the writer. Write directly to the user without meta-comments or acknowledgments. Do not include footnotes, references, appendices, or other non-main content in the summary.
+	const fireshipScriptPromptTemplate = `
+  can you rewrite this to be fireship style script? As a script, it would be preferable to have multiple short paragraphs, representing a chunk of continuous speech, and the breaks responding to short pauses. I would prefer it to be fun, but don't try too much to be sarcastic, make it easy to understand.
 
   {content}
   `;
-	
-	const rewritePromptTemplate = `
-  Rewrite the following summary to be less than 100 words total while preserving the key information. Keep the most important points, and maintain the tone and personality of the writer. Write directly to the user without meta-comments or acknowledgments.
 
-  {summary}
+	const scriptToArrayPromptTemplate = `
+  Convert this script to an array of paragraphs. Sometimes, there are lines that occur next to each other, though not exactly forming a paragraph, and there are lines that are spaced further from each other. For the lines that are placed closely to each other, combine them into a paragraph, if there also exists bigger spacings.
+  
+  {format_instructions}
+  
+  Script:
+  {content}
   `;
 
+	// Create prompt templates
+	const initialSummaryPrompt = ChatPromptTemplate.fromTemplate(initialSummaryPromptTemplate);
 	const concisePrompt = ChatPromptTemplate.fromTemplate(concisePromptTemplate);
-	const longSummaryPrompt = ChatPromptTemplate.fromTemplate(longSummaryPromptTemplate);
-	const rewritePrompt = ChatPromptTemplate.fromTemplate(rewritePromptTemplate);
+	const fireshipScriptPrompt = ChatPromptTemplate.fromTemplate(fireshipScriptPromptTemplate);
+	const scriptToArrayPrompt = ChatPromptTemplate.fromTemplate(scriptToArrayPromptTemplate);
 
 	// Process the section container recursively
 	const sectionContainer = await transformSectionContainer(
 		hierarchyResult.sectionContainer,
 		model,
+		initialSummaryPrompt,
 		concisePrompt,
-		longSummaryPrompt,
-		rewritePrompt
+		fireshipScriptPrompt,
+		scriptToArrayPrompt,
 	);
 
 	console.log(
@@ -117,20 +138,28 @@ export default async function summarizeHierarchy(
 async function transformSectionContainer(
 	container: SectionContainerWithDirectDefinition,
 	model: ChatOpenAI,
+	initialSummaryPrompt: ChatPromptTemplate,
 	concisePrompt: ChatPromptTemplate,
-	longSummaryPrompt: ChatPromptTemplate,
-	rewritePrompt: ChatPromptTemplate
+	fireshipScriptPrompt: ChatPromptTemplate,
+	scriptToArrayPrompt: ChatPromptTemplate,
 ): Promise<SectionContainer> {
 	console.log(`[summarizeHierarchy] Processing ${container.length} sections in parallel`);
-	
+
 	// Process all sections in parallel
-	const transformPromises = container.map(section => 
-		transformSection(section, model, concisePrompt, longSummaryPrompt, rewritePrompt)
+	const transformPromises = container.map((section) =>
+		transformSection(
+			section,
+			model,
+			initialSummaryPrompt,
+			concisePrompt,
+			fireshipScriptPrompt,
+			scriptToArrayPrompt,
+		)
 	);
-	
+
 	// Wait for all sections to be transformed
 	const result = await Promise.all(transformPromises);
-	
+
 	return result;
 }
 
@@ -147,9 +176,10 @@ function countWords(text: string): number {
 async function transformSection(
 	section: SectionWithDirectDefinition,
 	model: ChatOpenAI,
+	initialSummaryPrompt: ChatPromptTemplate,
 	concisePrompt: ChatPromptTemplate,
-	longSummaryPrompt: ChatPromptTemplate,
-	rewritePrompt: ChatPromptTemplate
+	fireshipScriptPrompt: ChatPromptTemplate,
+	scriptToArrayPrompt: ChatPromptTemplate,
 ): Promise<Section> {
 	// First, collect all summaries from this section and its children
 	const allSummaries = collectAllSummaries(section);
@@ -167,36 +197,100 @@ async function transformSection(
 				`[summarizeHierarchy] Generating summaries for section "${section.heading.join(' ')}"`
 			);
 
-			// Generate both summaries in parallel for efficiency
-			const [conciseResponse, longResponse] = await Promise.all([
+			// Step 1: Generate initial summary using the initial prompt
+			const initialResponse = await initialSummaryPrompt.pipe(model).invoke({
+				content: concatenatedSummaries
+			});
+
+			const initialSummaryText = initialResponse.content.toString().trim();
+			console.log(
+				`[summarizeHierarchy] Generated initial summary: "${initialSummaryText.substring(0, 50)}..."`
+			);
+
+			// Step 2: Generate concise summary and fireship script in parallel
+			const [conciseResponse, fireshipScriptResponse] = await Promise.all([
 				concisePrompt.pipe(model).invoke({
-					content: concatenatedSummaries
+					content: initialSummaryText
 				}),
-				longSummaryPrompt.pipe(model).invoke({
-					content: concatenatedSummaries
+				fireshipScriptPrompt.pipe(model).invoke({
+					content: initialSummaryText
 				})
 			]);
 
-			summary = [conciseResponse.content.toString().trim()];
-			let longSummaryText = longResponse.content.toString().trim();
-			
-			// Check if the long summary exceeds 100 words
-			if (countWords(longSummaryText) > 100) {
-				console.log(`[summarizeHierarchy] Long summary exceeds 100 words (${countWords(longSummaryText)} words). Rewriting...`);
-				
-				// Rewrite to be less than 100 words
-				const rewriteResponse = await rewritePrompt.pipe(model).invoke({
-					summary: longSummaryText
+			// Set the concise summary
+			let conciseSummaryText = conciseResponse.content.toString().trim();
+
+			// Check if the concise summary exceeds 15 words
+			if (countWords(conciseSummaryText) > 15) {
+				console.log(
+					`[summarizeHierarchy] Concise summary exceeds 15 words (${countWords(conciseSummaryText)} words). Retrying...`
+				);
+
+				// Try again with a stricter prompt
+				const retryResponse = await concisePrompt.pipe(model).invoke({
+					content: conciseSummaryText // Use the first attempt as input for the retry
 				});
-				
-				longSummaryText = rewriteResponse.content.toString().trim();
-				console.log(`[summarizeHierarchy] Rewritten summary word count: ${countWords(longSummaryText)} words`);
+
+				conciseSummaryText = retryResponse.content.toString().trim();
+				console.log(
+					`[summarizeHierarchy] Retry generated concise summary: "${conciseSummaryText}"`
+				);
+
+				// If still over 15 words, truncate
+				if (countWords(conciseSummaryText) > 15) {
+					const words = conciseSummaryText.split(/\s+/);
+					conciseSummaryText = words.slice(0, 15).join(' ') + '...';
+					console.log(
+						`[summarizeHierarchy] Truncated concise summary to 15 words: "${conciseSummaryText}"`
+					);
+				}
 			}
-			
-			longSummary = [longSummaryText];
+
+			summary = [conciseSummaryText];
+			console.log(
+				`[summarizeHierarchy] Final concise summary (${countWords(conciseSummaryText)} words): "${summary[0]}"`
+			);
+
+			// Step 3: Convert fireship script to array of paragraphs
+			const fireshipScript = fireshipScriptResponse.content.toString().trim();
+			const scriptToArrayResponse = await scriptToArrayPrompt.pipe(model).invoke({
+				format_instructions: formatInstructions,
+				content: fireshipScript
+			});
+
+			// Parse the structured output using the parser
+			try {
+				const paragraphsArray = await paragraphsParser.parse(
+					scriptToArrayResponse.content.toString().trim()
+				);
+
+				// The parser will ensure we get a proper array
+				longSummary = paragraphsArray;
+				console.log(
+					`[summarizeHierarchy] Generated long summary with ${longSummary.length} paragraphs`
+				);
+			} catch (parseError) {
+				// Fallback if parsing fails
+				console.error(`[summarizeHierarchy] Error parsing structured output:`, parseError);
+
+				// Create a simple array by splitting on paragraph breaks as fallback
+				const simpleParagraphs = fireshipScript.split(/\n\s*\n/).filter((p) => p.trim().length > 0);
+				if (simpleParagraphs.length > 0) {
+					longSummary = simpleParagraphs;
+					console.log(
+						`[summarizeHierarchy] Using fallback paragraph splitting with ${longSummary.length} paragraphs`
+					);
+				} else {
+					// Last resort fallback
+					longSummary = [fireshipScript];
+					console.log(`[summarizeHierarchy] Using fireship script as single paragraph fallback`);
+				}
+			}
 
 			console.log(`[summarizeHierarchy] Generated concise summary: "${summary[0]}"`);
-			console.log(`[summarizeHierarchy] Generated long summary: "${longSummary[0]}"`);
+			if (longSummary.length > 0) {
+				console.log(`[summarizeHierarchy] Generated long summary first part: "${longSummary[0]}"`);
+			}
 		} catch (error) {
 			console.error(`[summarizeHierarchy] Error generating summaries:`, error);
 			summary = [allSummaries[0]];
@@ -217,10 +311,12 @@ async function transformSection(
 			const transformed = await transformSectionContainer(
 				child as SectionContainerWithDirectDefinition,
 				model,
+				initialSummaryPrompt,
 				concisePrompt,
-				longSummaryPrompt,
-				rewritePrompt
-			);
+				fireshipScriptPrompt,
+				scriptToArrayPrompt,
+
+            );
 			transformedChildren.push(transformed);
 		}
 	}

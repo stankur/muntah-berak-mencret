@@ -25,3 +25,5 @@ vite.config.ts.timestamp-*
 # local persistence data
 persistence
 results
+
+**/.claude/settings.local.json

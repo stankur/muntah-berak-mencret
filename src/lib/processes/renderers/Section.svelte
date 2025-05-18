@@ -26,7 +26,12 @@
 				{/each}
 			</div>
 		{/if}
-		
+
+        {#if section.initial && section.initial.length > 0}
+			<div class="mt-1 border-l-4 border-yellow-500 bg-yellow-50 p-2 text-sm">
+                {section.initial}
+			</div>
+        {/if}		
 		{#if 'imageUrl' in section && section.imageUrl}
 			<div class="mt-1 flex justify-center">
 				<img src={section.imageUrl} alt="Section visualization" class="w-16 h-16 rounded object-cover" />

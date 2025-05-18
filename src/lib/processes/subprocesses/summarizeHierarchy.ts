@@ -17,6 +17,7 @@ export interface Section {
 	heading: string[];
 	children: (SectionContainer | string)[];
 	summary: string[];
+    initial: string;
 	longSummary: string[];
 	imageUrl?: string;
 }
@@ -48,6 +49,8 @@ const paragraphsSchema = z.array(z.string());
 const paragraphsParser = StructuredOutputParser.fromZodSchema(paragraphsSchema);
 // Get format instructions from the parser
 const formatInstructions = paragraphsParser.getFormatInstructions();
+	const systemPrompt =
+		"You are a highly capable, thoughtful, and precise assistant. Your goal is to deeply understand the user's intent, ask clarifying questions when needed, think step-by-step through complex problems, provide clear and accurate answers, and proactively anticipate helpful follow-up information. Always prioritize being truthful, nuanced, insightful, and efficient, tailoring your responses specifically to the user's needs and preferences.";
 
 /**
  * Summarizes a hierarchy by recursively collecting and processing summaries
@@ -69,47 +72,68 @@ export default async function summarizeHierarchy(
 	// Set up LLM with OpenRouter
 	const model = new ChatOpenAI({
 		modelName: 'openai/gpt-4o',
-		temperature: 0.1,
+		temperature: 0.7,
+        topP: 0.8,
 		openAIApiKey: PUBLIC_OPENROUTER_API_KEY,
 		configuration: {
 			baseURL: PUBLIC_OPENROUTER_API_URL
 		}
 	});
 
-	// Create prompt templates for summarization
-	const initialSummaryPromptTemplate = `
-  Summarize the following to be concise into a single paragraph. Use the source words as much as possible. Keep the most important points, and maintain the tone and personality of the writer. Write directly to the user without meta-comments or acknowledgments.
-  Do not include footnotes, references, appendices, or other non-main content in the summary.
+	// Define the system prompt that will be used across all templates
+	
+	// Create prompt templates for summarization with system messages
+	// Initial summary prompt
+	const initialSummaryPrompt = ChatPromptTemplate.fromMessages([
+		["system", systemPrompt],
+		["human", `
+Summarize the following to be concise into a single paragraph at most 100 words. Use the source words as much as possible. Keep the most important points, and maintain the tone and personality of the writer. Write directly to the user without meta-comments or acknowledgments.
+Do not include footnotes, references, appendices, or other non-main content in the summary.
 
-  {content}
-  `;
+{content}
+		`]
+	]);
 
-	const concisePromptTemplate = `
-  Rewrite the following to be at max 15 words, and make it a good hook, while rewriting/paraphrasing inside, and not just describing what we could find inside, output the answer and nothing else:
+	// Concise prompt 
+	const concisePrompt = ChatPromptTemplate.fromMessages([
+		["system", systemPrompt],
+		["human", `
+Rewrite the following to be at max 15 words, and make it a good hook, while rewriting/paraphrasing inside, and not just describing what we could find inside, output the answer and nothing else:
 
-  {content}
-  `;
+{content}
+		`]
+	]);
 
-	const fireshipScriptPromptTemplate = `
-  can you rewrite this to be fireship style script? As a script, it would be preferable to have multiple short paragraphs, representing a chunk of continuous speech, and the breaks responding to short pauses. I would prefer it to be fun, but don't try too much to be sarcastic, make it easy to understand.
+	// Fireship script prompt
+	const fireshipScriptPrompt = ChatPromptTemplate.fromMessages([
+		['system', systemPrompt],
+		[
+			'human',
+			`
+can you rewrite this to be fireship style script? As a script, it would be preferable to have multiple short paragraphs, representing a chunk of continuous speech, and the breaks responding to short pauses. I would prefer it to be fun, but don't try too much to be sarcastic, make it easy to understand.
 
-  {content}
-  `;
+Just like fireship, if you feel there is an uncommon concept to the audience, explain a bit, in fireship style.
 
-	const scriptToArrayPromptTemplate = `
-  Convert this script to an array of paragraphs. Sometimes, there are lines that occur next to each other, though not exactly forming a paragraph, and there are lines that are spaced further from each other. For the lines that are placed closely to each other, combine them into a paragraph, if there also exists bigger spacings.
-  
-  {format_instructions}
-  
-  Script:
-  {content}
-  `;
+Do not start with phrases like "Let's dive in", "Imagine", "Welcome to", or any generic intro. Do not mention "fireship" in your output.
+Begin immediately with the core idea.
 
-	// Create prompt templates
-	const initialSummaryPrompt = ChatPromptTemplate.fromTemplate(initialSummaryPromptTemplate);
-	const concisePrompt = ChatPromptTemplate.fromTemplate(concisePromptTemplate);
-	const fireshipScriptPrompt = ChatPromptTemplate.fromTemplate(fireshipScriptPromptTemplate);
-	const scriptToArrayPrompt = ChatPromptTemplate.fromTemplate(scriptToArrayPromptTemplate);
+{content}
+		`
+		]
+	]);
+
+	// Script to array prompt
+	const scriptToArrayPrompt = ChatPromptTemplate.fromMessages([
+		["system", systemPrompt],
+		["human", `
+Convert this script to an array of paragraphs. Sometimes, there are lines that occur next to each other, though not exactly forming a paragraph, and there are lines that are spaced further from each other. For the lines that are placed closely to each other, combine them into a paragraph, if there also exists bigger spacings.
+
+{format_instructions}
+
+Script:
+{content}
+		`]
+	]);
 
 	// Process the section container recursively
 	const sectionContainer = await transformSectionContainer(
@@ -187,6 +211,7 @@ async function transformSection(
 	// Generate the concise summary and long summary using the LLM
 	let summary: string[] = [];
 	let longSummary: string[] = [];
+    let initialSummaryText: string = "";
 
 	if (allSummaries.length > 0) {
 		// Concatenate all summaries
@@ -202,10 +227,39 @@ async function transformSection(
 				content: concatenatedSummaries
 			});
 
-			const initialSummaryText = initialResponse.content.toString().trim();
+			initialSummaryText = initialResponse.content.toString().trim();
 			console.log(
 				`[summarizeHierarchy] Generated initial summary: "${initialSummaryText.substring(0, 50)}..."`
 			);
+
+			// Check if the initial summary exceeds 100 words
+			if (countWords(initialSummaryText) > 100) {
+				console.log(
+					`[summarizeHierarchy] Initial summary exceeds 100 words (${countWords(initialSummaryText)} words). Rewriting...`
+				);
+				
+				// Create a rewrite prompt for shorter summary
+				const rewritePrompt = ChatPromptTemplate.fromMessages([
+					["system", systemPrompt],
+					["human", `
+Rewrite the following summary to be less than 100 words total while preserving the key information. 
+Keep the most important points, and maintain the tone and personality of the writer. 
+Write directly to the user without meta-comments or acknowledgments.
+
+{content}
+					`]
+				]);
+				
+				// Rewrite to be under 100 words
+				const rewriteResponse = await rewritePrompt.pipe(model).invoke({
+					content: initialSummaryText
+				});
+				
+				initialSummaryText = rewriteResponse.content.toString().trim();
+				console.log(
+					`[summarizeHierarchy] Rewritten initial summary (${countWords(initialSummaryText)} words): "${initialSummaryText.substring(0, 50)}..."`
+				);
+			}
 
 			// Step 2: Generate concise summary and fireship script in parallel
 			const [conciseResponse, fireshipScriptResponse] = await Promise.all([
@@ -325,6 +379,7 @@ async function transformSection(
 	return {
 		heading: section.heading,
 		children: transformedChildren,
+        initial: initialSummaryText,
 		summary,
 		longSummary
 	};

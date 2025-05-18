@@ -31,6 +31,8 @@
 	let selectedProcess = $state<Process<any> | AsyncProcess<any> | null>(null);
 	let selectedContentTitles = $state<string[]>([]);
 	let processes = $state<(Process<any> | AsyncProcess<any>)[]>([]);
+	let isProcessing = $state<boolean>(false);
+	let processingProgress = $state<{total: number; completed: number; failed: number}>({ total: 0, completed: 0, failed: 0 });
 
 	// Results-related state
 	let processRuns = $state<ProcessRun[]>([]);
@@ -64,32 +66,63 @@
 		}
 
 		try {
-			const processResults: ProcessResult<any>[] = [];
+			// Reset progress tracking and set processing state
+			isProcessing = true;
+			processingProgress = { total: selectedContentTitles.length, completed: 0, failed: 0 };
 
-			// Process each selected content item
-			for (const title of selectedContentTitles) {
-				// Fetch the content
-				const response = await fetch(`/api/content?title=${encodeURIComponent(title)}`);
-				const data = await response.json();
+			// Create an array to store processing promises with progress tracking
+			const processingPromises = selectedContentTitles.map(async (title) => {
+				try {
+					// Fetch the content
+					const response = await fetch(`/api/content?title=${encodeURIComponent(title)}`);
+					const data = await response.json();
 
-				if (data.success) {
-					// Run the process on the content, handling both sync and async
-					let result;
-					if (processRegistry.isAsync(selectedProcess.id)) {
-						// Handle async process
-						result = await selectedProcess.process(data.content);
+					if (data.success) {
+						// Run the process on the content, handling both sync and async
+						let result;
+						if (processRegistry.isAsync(selectedProcess.id)) {
+							// Handle async process
+							result = await selectedProcess.process(data.content);
+						} else {
+							// Handle sync process
+							result = selectedProcess.process(data.content);
+						}
+
+						// Update progress counter
+						processingProgress.completed += 1;
+						
+						return {
+							title,
+							content: result,
+							success: true
+						};
 					} else {
-						// Handle sync process
-						result = selectedProcess.process(data.content);
+						console.error(`Error loading content for ${title}: ${data.error}`);
+						// Update progress counter
+						processingProgress.failed += 1;
+						return { title, success: false, error: data.error };
 					}
-
-					processResults.push({
-						title,
-						content: result
-					});
-				} else {
-					console.error(`Error loading content for ${title}: ${data.error}`);
+				} catch (error) {
+					console.error(`Error processing ${title}:`, error);
+					// Update progress counter
+					processingProgress.failed += 1;
+					return { title, success: false, error: error instanceof Error ? error.message : String(error) };
 				}
+			});
+
+			// Execute all processing tasks in parallel
+			console.log(`Processing ${processingPromises.length} content items in parallel`);
+			const results = await Promise.all(processingPromises);
+
+			// Filter successful results for saving
+			const processResults: ProcessResult<any>[] = results
+				.filter(result => result.success)
+				.map(({ title, content }) => ({ title, content }));
+
+			// Log any errors
+			const errors = results.filter(result => !result.success);
+			if (errors.length > 0) {
+				console.error(`${errors.length} items failed processing:`, errors);
 			}
 
 			// Save the results
@@ -108,9 +141,18 @@
 				const saveResult = await saveResponse.json();
 
 				if (saveResult.success) {
-					alert(
-						`Process executed successfully on ${selectedContentTitles.length} content items! Results have been saved.`
-					);
+					const successCount = processResults.length;
+					const failedCount = selectedContentTitles.length - successCount;
+					
+					if (failedCount > 0) {
+						alert(
+							`Process completed with mixed results: ${successCount} items processed successfully and ${failedCount} failed. Results for successful items have been saved. Check console for error details.`
+						);
+					} else {
+						alert(
+							`Process executed successfully on all ${selectedContentTitles.length} content items! Results have been saved.`
+						);
+					}
 				} else {
 					alert(`Process executed successfully but failed to save results: ${saveResult.error}`);
 				}
@@ -119,6 +161,9 @@
 			}
 		} catch (error) {
 			alert(`Error running process: ${error instanceof Error ? error.message : String(error)}`);
+		} finally {
+			// Reset processing state when done
+			isProcessing = false;
 		}
 	}
 
@@ -405,14 +450,33 @@
 			<!-- Run Process Button -->
 			{#if selectedContentTitles.length > 0}
 				<button
-					class="rounded-md bg-green-500 px-4 py-2 text-white hover:bg-green-600"
+					class="rounded-md {isProcessing ? 'bg-gray-400' : 'bg-green-500 hover:bg-green-600'} px-4 py-2 text-white"
 					on:click={runProcess}
+					disabled={isProcessing}
 				>
-					Run {selectedProcess.name} on {selectedContentTitles.length} selected item{selectedContentTitles.length >
-					1
-						? 's'
-						: ''}
+					{#if isProcessing}
+						Processing... ({processingProgress.completed + processingProgress.failed}/{processingProgress.total})
+					{:else}
+						Run {selectedProcess.name} on {selectedContentTitles.length} selected item{selectedContentTitles.length >
+						1
+							? 's'
+							: ''}
+					{/if}
 				</button>
+				
+				{#if isProcessing}
+					<div class="mt-2 text-sm">
+						<div class="w-full bg-gray-200 rounded-full h-2.5 mb-1">
+							<div class="bg-blue-600 h-2.5 rounded-full" style="width: {((processingProgress.completed + processingProgress.failed) / processingProgress.total) * 100}%"></div>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-green-600">{processingProgress.completed} completed</span>
+							{#if processingProgress.failed > 0}
+								<span class="text-red-600">{processingProgress.failed} failed</span>
+							{/if}
+						</div>
+					</div>
+				{/if}
 			{/if}
 		{/if}
 	</div>
